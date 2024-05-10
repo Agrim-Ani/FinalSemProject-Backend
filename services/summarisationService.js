@@ -1,7 +1,7 @@
 const axios = require('axios');
 
-const API_KEY = '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';
-const API_URL = 'https://api.openai.com/v1/engines/davinci-codex/completions';
+
+
 
 async function summarizeText(text) {
     try {
