@@ -3,7 +3,8 @@ const path = require('path');
 const multer = require('multer');
 const mongoose = require('mongoose')
 const pdf = require('pdf-parse');
-const { PDFDocument } = require('pdf-lib');
+const axios = require('axios')
+const { PDFDocument, cleanText } = require('pdf-lib');
 // using version ^2.9.359
 const pdfjsLib = require('pdfjs-dist/legacy/build/pdf');
 const asyncHandler = require('express-async-handler');
@@ -110,8 +111,13 @@ const getFile = asyncHandler(async (req, res) => {
             readStream.on('data', (chunk) => {
                 data += chunk.replace(/\n/g, ' '); // Process chunk and replace newlines with spaces
             });
-            readStream.on('end', () => {
-                res.status(200).send({ filename: file.filename, content: data });
+            readStream.on('end', async () => {
+                try {
+                    const fast_api_res = await sendToFastAPI(data,"llama3-70b-8192");
+                    res.status(200).send({ filename: file.filename, content: fast_api_res })
+                } catch (error) {
+                    res.status(500).send({ message: "Failed to read text file: " + error.message });
+                }
             });
             readStream.on('error', (error) => {
                 res.status(500).send({ message: "Failed to read text file: " + error.message });
@@ -121,6 +127,22 @@ const getFile = asyncHandler(async (req, res) => {
         }
     });
 });
+
+const sendToFastAPI = async (cleanedText, modelName) => {
+    try {
+        const response = await axios.post('http://localhost:8000/summarize', {
+            fileData: cleanedText,
+            model: modelName
+        });
+        const s = `preview_text: ${response.data.preview_text},
+            full_summary: ${response.data.full_summary},
+            key_points: ${response.data.key_points}`
+        return s
+    } catch (error) {
+        throw new Error("Failed to summarize text: " + error.message);
+    }
+};
+
 
 const listFiles = asyncHandler(async (req, res) => {
     const files = await File.find({ userId: req.user.id });  // Assuming the user ID is stored in req.user
