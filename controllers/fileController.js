@@ -134,10 +134,17 @@ const sendToFastAPI = async (cleanedText, modelName) => {
             fileData: cleanedText,
             model: modelName
         });
-        const s = `preview_text: ${response.data.preview_text},
-            full_summary: ${response.data.full_summary},
-            key_points: ${response.data.key_points}`
-        return s
+        // const s = `preview_text: ${response.data.preview_text},
+        //     full_summary: ${response.data.full_summary},
+        //     key_points: ${response.data.key_points}`
+        const s = {
+            preview_text: response.data.preview_text,
+            full_summary: response.data.full_summary,
+            key_points: response.data.key_points                
+        }
+        const jsonData=JSON.stringify(s);
+        console.log(s)
+        return jsonData
     } catch (error) {
         throw new Error("Failed to summarize text: " + error.message);
     }
