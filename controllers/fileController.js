@@ -13,7 +13,7 @@ const File = require('../models/fileModel')
 // Configure storage and file filter for Multer
 const storage = multer.diskStorage({
     destination: function(req, file, cb) {
-        cb(null, './uploads/');  // Save files in the uploads directory
+        cb(null, process.env.FILE_DESTINATION);  // Save files in the uploads directory
     },
     filename: function(req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -77,6 +77,8 @@ const uploadFile = asyncHandler((req, res, next) => {
 });
 
 const getFile = asyncHandler(async (req, res) => {
+    const modelName = req.query.model;
+    console.log(modelName);
     const fileId = req.params.fileId;
     if (!mongoose.Types.ObjectId.isValid(fileId)) {
         return res.status(400).send({ message: "Invalid file ID format." });
@@ -101,7 +103,9 @@ const getFile = asyncHandler(async (req, res) => {
                 // This is a placeholder for a streaming PDF text extraction logic
                 const text = await extractTextFromPDF(filePath);  // Corrected to pass the file path directly
                 const cleanedText = text.replace(/\n/g, ' ');
-                res.status(200).send({ filename: file.filename, content: cleanedText });
+                console.log(cleanedText);
+                const fast_api_res = await sendToFastAPI(cleanedText, modelName);
+                res.status(200).send({ filename: file.filename, content: fast_api_res });
             } catch (error) {
                 res.status(500).send({ message: "Failed to extract text from PDF: " + error.message });
             }
@@ -113,7 +117,7 @@ const getFile = asyncHandler(async (req, res) => {
             });
             readStream.on('end', async () => {
                 try {
-                    const fast_api_res = await sendToFastAPI(data,"llama3-70b-8192");
+                    const fast_api_res = await sendToFastAPI(data, modelName);
                     res.status(200).send({ filename: file.filename, content: fast_api_res })
                 } catch (error) {
                     res.status(500).send({ message: "Failed to read text file: " + error.message });
@@ -137,8 +141,9 @@ const sendToFastAPI = async (cleanedText, modelName) => {
         // const s = `preview_text: ${response.data.preview_text},
         //     full_summary: ${response.data.full_summary},
         //     key_points: ${response.data.key_points}`
+        const result = response.data.preview_text.substring(0,1000);
         const s = {
-            preview_text: response.data.preview_text,
+            preview_text: result,
             full_summary: response.data.full_summary,
             key_points: response.data.key_points                
         }
